@@ -1,6 +1,6 @@
 import pyodbc
 
-SERVER = r"DESKTOP-HB90DP5"
+SERVER = r"DESKTOP-MQ0NP7T\SQLEXPRESS"
 DATABASE = "BibliotecaBD"
 
 def get_connection():
