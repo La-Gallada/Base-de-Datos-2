@@ -16,11 +16,22 @@ ALLOWED_INTENTS = {
     "get_users",
     "get_books",
     "search_books",
+    "search_books_by_author",     # ← NUEVO: buscar libros por autor
+    "search_books_by_year",        # ← NUEVO: buscar libros por año de publicación
+    "search_books_by_genre",       # ← NUEVO: buscar libros por género/categoría avanzado
+    "get_book_recommendations",    # ← NUEVO: obtener recomendaciones de libros
+    "get_author_books",            # ← NUEVO: obtener todos los libros de un autor
+    "get_books_by_year_range",     # ← NUEVO: obtener libros en un rango de años
+    "compare_authors",             # ← NUEVO: comparar estadísticas de autores
+    "get_most_loaned_books",       # ← NUEVO: obtener libros más prestados
+    "get_least_loaned_books",      # ← NUEVO: obtener libros menos prestados
     "get_authors",
     "get_categories",
     "active_loans",
-    "check_book_availability",   # ← NUEVO: verificar si un libro está disponible
-    "request_loan",              # ← NUEVO: solicitar préstamo de un libro
+    "check_book_availability",     # Verificar si un libro está disponible
+    "request_loan",                # Solicitar préstamo de un libro
+    "get_loan_history",            # ← NUEVO: obtener historial de préstamos de un usuario
+    "get_category_stats",          # ← NUEVO: estadísticas de una categoría
 }
 
 
@@ -56,25 +67,62 @@ RESPONDE SOLO CON JSON VÁLIDO (sin texto extra, sin markdown, sin explicaciones
 }}
 
 REGLAS DE MAPPING:
+
+=== BÚSQUEDAS BÁSICAS ===
 - "¿Cuántos libros de [categoría]?" → count_books_by_category + {{"category_name": "[categoría]"}}
 - "¿Autores con más préstamos en [mes/año]?" → top_authors_by_loans_month + {{"year": YYYY, "month": M}}
 - "¿Préstamos vencidos?" → overdue_loans + {{"as_of_date": "YYYY-MM-DD"}} (opcional)
 - "Lista de usuarios" → get_users
-- "Ver libros / ¿Qué libros hay?" → get_books
-- "¿Categorías?" → get_categories
-- "¿Autores?" → get_authors
+- "Ver libros / ¿Qué libros hay? / ¿Qué libros hay disponibles? / Lista de libros" → get_books
+- "¿Categorías? / Ver categorías" → get_categories
+- "¿Autores? / Ver autores" → get_authors
 - "Buscar [título]" → search_books + {{"title": "[título]"}}
-- "¿Préstamos activos?" → active_loans
-- "¿Está disponible [libro]?" → check_book_availability + {{"title": "[título]"}}
+- "¿Préstamos activos? / Ver préstamos activos" → active_loans
+- "¿Está disponible [libro]? / Disponibilidad de [libro]" → check_book_availability + {{"title": "[título]"}}
 - "Quiero sacar / prestar [libro]" → check_book_availability + {{"title": "[título]"}}
+
+=== BÚSQUEDAS AVANZADAS POR AUTOR ===
+- "¿Qué libros escribió [autor]?" → search_books_by_author + {{"author_name": "[nombre]"}}
+- "Libros de [autor]" → search_books_by_author + {{"author_name": "[nombre]"}}
+- "¿Quién escribió [libro]?" → search_books + {{"title": "[título]"}} (retorna autor)
+- "Todos los libros de [autor]" → get_author_books + {{"author_name": "[nombre]"}}
+- "Comparar [autor1] vs [autor2]" → compare_authors + {{"author1": "[nombre1]", "author2": "[nombre2]"}}
+
+=== BÚSQUEDAS AVANZADAS POR AÑO ===
+- "¿Libros de [año]?" → search_books_by_year + {{"year": YYYY}}
+- "Libros publicados en [año]" → search_books_by_year + {{"year": YYYY}}
+- "¿Libros entre [año1] y [año2]?" → get_books_by_year_range + {{"start_year": YYYY, "end_year": YYYY}}
+- "Libros más recientes" → get_books_by_year_range + {{"start_year": YYYY, "end_year": YYYY}}
+- "Libros antiguos de [año]" → search_books_by_year + {{"year": YYYY}}
+
+=== BÚSQUEDAS AVANZADAS POR GÉNERO/CATEGORÍA ===
+- "¿Libros de [género/categoría]?" → search_books_by_genre + {{"genre": "[género]"}}
+- "¿Recomendaciones de [género]?" → get_book_recommendations + {{"genre": "[género]"}}
+- "Mostrar [género]" → search_books_by_genre + {{"genre": "[género]"}}
+- "¿Qué libros de ficción hay?" → search_books_by_genre + {{"genre": "Ficción"}}
+- "¿Géneros disponibles?" → get_categories
+
+=== RECOMENDACIONES Y ESTADÍSTICAS ===
+- "Recomendaciones para mí" → get_book_recommendations + {{}} (sin parámetros, general)
+- "¿Cuál es el mejor libro?" → get_most_loaned_books + {{"limit": 1}}
+- "Libros más populares" → get_most_loaned_books + {{"limit": 10}}
+- "Libros menos prestados" → get_least_loaned_books + {{"limit": 5}}
+- "Estadísticas de [categoría]" → get_category_stats + {{"category_name": "[nombre]"}}
+
+=== HISTORIAL Y GESTIÓN ===
+- "¿Cuántos libros prestó [usuario]?" → get_loan_history + {{"user_id": N}}
+- "Mis préstamos" → get_loan_history + {{"user_id": N}}
+- "Historial de [usuario]" → get_loan_history + {{"user_name": "[nombre]}}
 
 VALIDACIONES:
 - Si el libro, categoría, autor o usuario no existe en la BD → confianza 0
 - Si la fecha es inválida → confianza 0
 - Si no tiene relación con la biblioteca → confianza 0
 - Preguntas filosóficas, matemáticas, históricas generales, etc. → confianza 0
+- Para preguntas generales como "qué libros hay", usar get_books con alta confianza
 """
     return system_prompt
+
 
 
 SYSTEM_PROMPT = _build_system_prompt()
@@ -83,6 +131,14 @@ SYSTEM_PROMPT = _build_system_prompt()
 def try_parse_intent(user_text: str, model: str = "llama3.2:3b") -> Optional[Dict[str, Any]]:
     """
     Devuelve dict con intent/params/confidence o None si no es confiable.
+    
+    Soporta intents avanzados incluyendo:
+    - Búsquedas por autor, año de publicación, género
+    - Recomendaciones de libros
+    - Estadísticas y análisis de datos
+    - Historial de préstamos
+    - Comparación de autores
+    
     Nunca retorna None para forzar un fallback genérico — si no hay intent válido,
     el llamador debe mostrar un mensaje restringido al dominio biblioteca.
     """
@@ -135,10 +191,21 @@ def get_out_of_scope_message() -> str:
     return (
         "⚠️ Solo puedo responder preguntas relacionadas con esta biblioteca.\n\n"
         "Puedo ayudarte con:\n"
-        "• 📚 Ver libros disponibles\n"
-        "• 🔍 Buscar un libro por título\n"
-        "• 📖 Ver préstamos activos o vencidos\n"
-        "• 👥 Consultar usuarios o autores\n"
-        "• 📂 Ver categorías\n\n"
-        "Ejemplo: '¿Qué libros hay disponibles?' o '¿Está disponible Sapiens?'"
+        "📚 BÚSQUEDAS BÁSICAS:\n"
+        "   • Ver libros / Ver autores / Ver categorías\n"
+        "   • Buscar un libro por título\n"
+        "   • Ver préstamos activos o vencidos\n\n"
+        "🔍 BÚSQUEDAS AVANZADAS:\n"
+        "   • Libros de un autor específico (ej: 'Libros de García Márquez')\n"
+        "   • Libros de un año/año de publicación (ej: 'Libros de 2020')\n"
+        "   • Libros por género/categoría (ej: 'Libros de ficción')\n"
+        "   • Comparar autores (estadísticas)\n"
+        "   • Recomendaciones de libros\n\n"
+        "📊 ESTADÍSTICAS:\n"
+        "   • Libros más prestados / menos prestados\n"
+        "   • Estadísticas de una categoría\n"
+        "   • Autores con más préstamos\n"
+        "   • Historial de préstamos de un usuario\n\n"
+        "Ejemplos: '¿Qué libros escribió García Márquez?', 'Libros de 2020', "
+        "'Recomendaciones de ficción', 'Libros más populares', '¿Está disponible Clean Code?'"
     )
