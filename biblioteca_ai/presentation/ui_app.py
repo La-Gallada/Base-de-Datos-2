@@ -11,8 +11,9 @@ import customtkinter as ctk
 from tkinter import messagebox
 from datetime import date, timedelta
 
-from assistant_service import ask_biblioteca
-from services.biblioteca_service import register_loan
+from business.assistant_service import ask_biblioteca
+from business.services.biblioteca_service import register_loan
+import data.biblioteca_repo as biblioteca_repo
 
 
 # ─────────────────────────────────────────────
@@ -243,16 +244,22 @@ class ResultsPanel(ctk.CTkScrollableFrame):
 # ─────────────────────────────────────────────
 
 class ChatApp(ctk.CTk):
-    def __init__(self):
+    def __init__(self, user_data=None, is_admin=False):
         super().__init__()
 
+        self.user_data = user_data
+        self.is_admin = is_admin
+
         self.title("📚 Biblioteca Inteligente")
-        self.geometry("1100x680")
-        self.minsize(900, 580)
+        # Configurar colores primero
         self.configure(fg_color=COLOR_BG)
 
+        # Construir el layout
         self._build_layout()
         self._welcome()
+
+        # Maximizar la ventana después de construir todo
+        self.state('zoomed')
 
     def _build_layout(self):
         # ── Header
@@ -260,24 +267,48 @@ class ChatApp(ctk.CTk):
         header.pack(fill="x")
         header.pack_propagate(False)
 
+        # Lado izquierdo: título
+        left_header = ctk.CTkFrame(header, fg_color="transparent")
+        left_header.pack(side="left", fill="both", expand=True, padx=20, pady=10)
+        
         ctk.CTkLabel(
-            header,
+            left_header,
             text="📚  Biblioteca Inteligente",
             font=FONT_TITLE,
             text_color=COLOR_TEXT
-        ).pack(side="left", padx=20, pady=10)
+        ).pack(side="left")
 
+        # Lado derecho: info del usuario
+        right_header = ctk.CTkFrame(header, fg_color="transparent")
+        right_header.pack(side="right", fill="both", padx=20, pady=10)
+        
+        if self.user_data:
+            user_info = f"👤 {self.user_data['nombre']} ({self.user_data['tipo']})"
+        else:
+            user_info = "Solo respondo con datos reales de la biblioteca"
+        
         ctk.CTkLabel(
-            header,
-            text="Solo respondo con datos reales de la biblioteca",
+            right_header,
+            text=user_info,
             font=FONT_SMALL,
-            text_color=COLOR_MUTED
-        ).pack(side="right", padx=20)
+            text_color=COLOR_ACCENT if self.user_data else COLOR_MUTED
+        ).pack(side="right")
 
-        # ── Cuerpo: chat izquierda + resultados derecha
+        # ── Cuerpo: con tabbar si es admin
         body = ctk.CTkFrame(self, fg_color=COLOR_BG)
         body.pack(fill="both", expand=True, padx=0, pady=0)
 
+        if self.is_admin:
+            # Tabbar para admin
+            self._build_admin_layout(body)
+        else:
+            # Layout normal para usuario
+            self._build_user_layout(body)
+
+        self.is_busy = False
+    
+    def _build_user_layout(self, body):
+        """Layout normal para usuario regular."""
         # Panel izquierdo: chat
         left = ctk.CTkFrame(body, fg_color=COLOR_PANEL, corner_radius=0, width=380)
         left.pack(side="left", fill="y")
@@ -349,7 +380,101 @@ class ChatApp(ctk.CTk):
         )
         self.results_panel.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
-        self.is_busy = False
+    def _build_admin_layout(self, body):
+        """Layout con tabbar para administrador."""
+        from .admin_panel import AdminPanel
+        
+        # Tabbar
+        tabview = ctk.CTkTabview(
+            body,
+            fg_color=COLOR_PANEL,
+            segmented_button_fg_color=COLOR_CARD,
+            segmented_button_selected_color=COLOR_ACCENT,
+            text_color=COLOR_TEXT
+        )
+        tabview.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # Tab: Chat (igual para admin)
+        chat_tab = tabview.add("💬 Chat")
+        self._build_user_layout_in_tab(chat_tab)
+
+        # Tab: Administración
+        admin_tab = tabview.add("⚙️ Administración")
+        admin_panel = AdminPanel(admin_tab)
+        admin_panel.pack(fill="both", expand=True)
+
+    def _build_user_layout_in_tab(self, parent):
+        """Layout de usuario pero dentro de un tab."""
+        # Panel izquierdo: chat
+        left = ctk.CTkFrame(parent, fg_color=COLOR_PANEL, corner_radius=0, width=380)
+        left.pack(side="left", fill="y")
+        left.pack_propagate(False)
+
+        ctk.CTkLabel(
+            left, text="💬 Chat", font=FONT_HEADING, text_color=COLOR_TEXT
+        ).pack(anchor="w", padx=16, pady=(12, 6))
+
+        # Historial de chat
+        self.chat_box = ctk.CTkTextbox(
+            left,
+            state="disabled",
+            wrap="word",
+            fg_color=COLOR_BG,
+            font=FONT_BODY,
+            text_color=COLOR_TEXT,
+            corner_radius=8
+        )
+        self.chat_box.pack(fill="both", expand=True, padx=10, pady=(0, 6))
+
+        # Status "pensando..."
+        self.loading_label = ctk.CTkLabel(left, text="", font=FONT_SMALL, text_color=COLOR_ACCENT)
+        self.loading_label.pack()
+
+        # Entrada de texto
+        input_frame = ctk.CTkFrame(left, fg_color="transparent")
+        input_frame.pack(fill="x", padx=10, pady=(0, 12))
+
+        self.user_input = ctk.CTkEntry(
+            input_frame,
+            placeholder_text="Escribe tu consulta...",
+            fg_color=COLOR_CARD,
+            border_color=COLOR_BORDER,
+            text_color=COLOR_TEXT,
+            font=FONT_BODY,
+            height=38
+        )
+        self.user_input.pack(side="left", fill="x", expand=True, padx=(0, 8))
+        self.user_input.bind("<Return>", self.send_message)
+
+        self.send_button = ctk.CTkButton(
+            input_frame,
+            text="▶",
+            width=38,
+            height=38,
+            fg_color=COLOR_ACCENT,
+            hover_color="#3b6fd4",
+            font=("Segoe UI", 16),
+            command=self.send_message
+        )
+        self.send_button.pack(side="right")
+
+        # Separador vertical
+        sep = ctk.CTkFrame(parent, fg_color=COLOR_BORDER, width=1)
+        sep.pack(side="left", fill="y")
+
+        # Panel derecho: resultados
+        right = ctk.CTkFrame(parent, fg_color=COLOR_BG)
+        right.pack(side="left", fill="both", expand=True)
+
+        ctk.CTkLabel(
+            right, text="📊 Resultados", font=FONT_HEADING, text_color=COLOR_TEXT
+        ).pack(anchor="w", padx=16, pady=(12, 6))
+
+        self.results_panel = ResultsPanel(
+            right,
+            on_loan_callback=self._on_loan_requested
+        )
+        self.results_panel.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
     def _welcome(self):
         self._append_bot(
@@ -405,7 +530,8 @@ class ChatApp(ctk.CTk):
 
     def _worker(self, user_text: str):
         try:
-            result = ask_biblioteca(user_text)
+            user_role = self.user_data.get("tipo") if self.user_data else None
+            result = ask_biblioteca(user_text, user_role)
         except Exception as e:
             result = {"type": "text", "message": f"⚠️ Error: {e}", "data": []}
 
@@ -498,7 +624,8 @@ class ChatApp(ctk.CTk):
         ).start()
 
     def _worker_loan(self, id_libro: int):
-        result = register_loan(id_libro=id_libro, id_usuario=1)
+        user_role = self.user_data.get("tipo") if self.user_data else None
+        result = register_loan(id_libro=id_libro, id_usuario=1, user_role=user_role)
         self.after(0, lambda: self._finish_loan(result, id_libro))
 
     def _finish_loan(self, result: dict, id_libro: int):
@@ -509,24 +636,33 @@ class ChatApp(ctk.CTk):
         if success:
             self._append_bot(message)
             messagebox.showinfo("✅ Préstamo registrado", message)
-            # Refrescar el panel de libros automáticamente
-            self._refresh_books_panel()
+            # Actualizar solo la disponibilidad del libro prestado en lugar de refrescar todo
+            self._update_book_availability(id_libro)
         else:
             self._append_bot(message)
             messagebox.showerror("❌ Error", message)
 
-    def _refresh_books_panel(self):
+    def _update_book_availability(self, id_libro: int):
         """
-        Recarga la lista de libros en el panel derecho tras un préstamo.
+        Actualiza la disponibilidad de un libro específico en la UI
+        sin hacer una consulta completa de todos los libros.
         """
-        from assistant_service import ask_biblioteca
-        threading.Thread(
-            target=lambda: self.after(
-                0,
-                lambda: self._handle_result(ask_biblioteca("ver todos los libros"))
-            ),
-            daemon=True
-        ).start()
+        try:
+            # Obtener solo la información actualizada de este libro
+            user_role = self.user_data.get("tipo")
+            book_data = biblioteca_repo.sp_get_book_by_id(id_libro, user_role=user_role)
+            if book_data:
+                titulo = book_data[1]
+                disponible = book_data[5]
+                total = book_data[4]
+
+                # Actualizar el mensaje en el chat para reflejar la nueva disponibilidad
+                update_msg = f"📊 Disponibilidad actualizada:\n📚 {titulo}\n📖 Disponibles: {disponible}/{total}"
+                self._append_bot(update_msg)
+
+        except Exception as e:
+            print(f"Error actualizando disponibilidad: {e}")
+            # Si falla, no es crítico - el usuario ya sabe que el préstamo fue exitoso
 
 
 # ─────────────────────────────────────────────

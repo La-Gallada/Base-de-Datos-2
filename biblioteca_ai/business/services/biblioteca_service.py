@@ -5,7 +5,7 @@ Ejecuta intents y retorna resultados estructurados para la UI.
 
 from datetime import date, timedelta
 from typing import Any, Dict, List, Optional, Tuple
-import biblioteca_repo
+import data.biblioteca_repo as biblioteca_repo
 
 
 # Tipo de respuesta estructurada para la UI
@@ -16,7 +16,7 @@ import biblioteca_repo
 # }
 
 
-def run_intent_safely(intent_data: Dict[str, Any]) -> Dict[str, Any]:
+def run_intent_safely(intent_data: Dict[str, Any], user_role: str = None) -> Dict[str, Any]:
     """
     Ejecuta el intent y retorna un dict estructurado para la UI.
     Nunca lanza excepciones al llamador.
@@ -25,7 +25,7 @@ def run_intent_safely(intent_data: Dict[str, Any]) -> Dict[str, Any]:
     params = intent_data.get("params", {})
 
     try:
-        return _dispatch(intent, params)
+        return _dispatch(intent, params, user_role)
     except Exception as e:
         return {
             "type": "text",
@@ -34,30 +34,30 @@ def run_intent_safely(intent_data: Dict[str, Any]) -> Dict[str, Any]:
         }
 
 
-def _dispatch(intent: str, params: Dict[str, Any]) -> Dict[str, Any]:
+def _dispatch(intent: str, params: Dict[str, Any], user_role: str = None) -> Dict[str, Any]:
     handlers = {
-        "get_books":                    _handle_get_books,
-        "search_books":                 _handle_search_books,
-        "check_book_availability":      _handle_check_availability,
-        "request_loan":                 _handle_check_availability,
-        "search_books_by_author":       _handle_search_books_by_author,
-        "search_books_by_year":         _handle_search_books_by_year,
-        "search_books_by_genre":        _handle_search_books_by_genre,
-        "get_author_books":             _handle_search_books_by_author,
-        "get_books_by_year_range":      _handle_books_by_year_range,
-        "get_most_loaned_books":        _handle_most_loaned_books,
-        "get_least_loaned_books":       _handle_least_loaned_books,
-        "get_loan_history":             _handle_loan_history,
-        "get_category_stats":           _handle_category_stats,
-        "compare_authors":              _handle_compare_authors,
-        "get_book_recommendations":     _handle_book_recommendations,
-        "get_users":                    _handle_get_users,
-        "get_authors":                  _handle_get_authors,
-        "get_categories":               _handle_get_categories,
-        "active_loans":                 _handle_active_loans,
-        "overdue_loans":                _handle_overdue_loans,
-        "count_books_by_category":      _handle_count_by_category,
-        "top_authors_by_loans_month":   _handle_top_authors,
+        "get_books":                    lambda p: _handle_get_books(p, user_role),
+        "search_books":                 lambda p: _handle_search_books(p, user_role),
+        "check_book_availability":      lambda p: _handle_check_availability(p, user_role),
+        "request_loan":                 lambda p: _handle_check_availability(p, user_role),
+        "search_books_by_author":       lambda p: _handle_search_books_by_author(p, user_role),
+        "search_books_by_year":         lambda p: _handle_search_books_by_year(p, user_role),
+        "search_books_by_genre":        lambda p: _handle_search_books_by_genre(p, user_role),
+        "get_author_books":             lambda p: _handle_search_books_by_author(p, user_role),
+        "get_books_by_year_range":      lambda p: _handle_books_by_year_range(p, user_role),
+        "get_most_loaned_books":        lambda p: _handle_most_loaned_books(p, user_role),
+        "get_least_loaned_books":       lambda p: _handle_least_loaned_books(p, user_role),
+        "get_loan_history":             lambda p: _handle_loan_history(p, user_role),
+        "get_category_stats":           lambda p: _handle_category_stats(p, user_role),
+        "compare_authors":              lambda p: _handle_compare_authors(p, user_role),
+        "get_book_recommendations":     lambda p: _handle_book_recommendations(p, user_role),
+        "get_users":                    lambda p: _handle_get_users(p, user_role),
+        "get_authors":                  lambda p: _handle_get_authors(p, user_role),
+        "get_categories":               lambda p: _handle_get_categories(p, user_role),
+        "active_loans":                 lambda p: _handle_active_loans(p, user_role),
+        "overdue_loans":                lambda p: _handle_overdue_loans(p, user_role),
+        "count_books_by_category":      lambda p: _handle_count_by_category(p, user_role),
+        "top_authors_by_loans_month":   lambda p: _handle_top_authors(p, user_role),
     }
 
     handler = handlers.get(intent)
@@ -71,8 +71,8 @@ def _dispatch(intent: str, params: Dict[str, Any]) -> Dict[str, Any]:
 # HANDLERS DE LIBROS
 # ─────────────────────────────────────────────
 
-def _handle_get_books(params: Dict) -> Dict:
-    rows = biblioteca_repo.sp_get_books()
+def _handle_get_books(params: Dict, user_role: str = None) -> Dict:
+    rows = biblioteca_repo.sp_get_books(user_role=user_role)
     if not rows:
         return {"type": "text", "message": "No hay libros registrados en la biblioteca.", "data": []}
 
@@ -84,12 +84,12 @@ def _handle_get_books(params: Dict) -> Dict:
     }
 
 
-def _handle_search_books(params: Dict) -> Dict:
+def _handle_search_books(params: Dict, user_role: str = None) -> Dict:
     title = params.get("title", "").strip()
     if not title:
         return {"type": "text", "message": "⚠️ Debes especificar un título para buscar.", "data": []}
 
-    rows = biblioteca_repo.sp_search_books(title)
+    rows = biblioteca_repo.sp_search_books(title, user_role=user_role)
     if not rows:
         return {
             "type": "text",
@@ -105,13 +105,13 @@ def _handle_search_books(params: Dict) -> Dict:
     }
 
 
-def _handle_check_availability(params: Dict) -> Dict:
+def _handle_check_availability(params: Dict, user_role: str = None) -> Dict:
     title = params.get("title", "").strip()
     if not title:
         # Si no hay título específico, mostrar todos los libros
-        return _handle_get_books(params)
+        return _handle_get_books(params, user_role)
 
-    rows = biblioteca_repo.sp_check_book_availability(title)
+    rows = biblioteca_repo.sp_check_book_availability(title, user_role=user_role)
     if not rows:
         return {
             "type": "text",
@@ -139,8 +139,8 @@ def _handle_check_availability(params: Dict) -> Dict:
 # HANDLERS DE USUARIOS / AUTORES / CATEGORÍAS
 # ─────────────────────────────────────────────
 
-def _handle_get_users(params: Dict) -> Dict:
-    rows = biblioteca_repo.sp_get_users()
+def _handle_get_users(params: Dict, user_role: str = None) -> Dict:
+    rows = biblioteca_repo.sp_get_users(user_role=user_role)
     if not rows:
         return {"type": "text", "message": "No hay usuarios registrados.", "data": []}
 
@@ -161,8 +161,8 @@ def _handle_get_users(params: Dict) -> Dict:
     }
 
 
-def _handle_get_authors(params: Dict) -> Dict:
-    rows = biblioteca_repo.sp_get_authors()
+def _handle_get_authors(params: Dict, user_role: str = None) -> Dict:
+    rows = biblioteca_repo.sp_get_authors(user_role=user_role)
     if not rows:
         return {"type": "text", "message": "No hay autores registrados.", "data": []}
 
@@ -174,8 +174,8 @@ def _handle_get_authors(params: Dict) -> Dict:
     }
 
 
-def _handle_get_categories(params: Dict) -> Dict:
-    rows = biblioteca_repo.sp_get_categories()
+def _handle_get_categories(params: Dict, user_role: str = None) -> Dict:
+    rows = biblioteca_repo.sp_get_categories(user_role=user_role)
     if not rows:
         return {"type": "text", "message": "No hay categorías registradas.", "data": []}
 
@@ -191,8 +191,8 @@ def _handle_get_categories(params: Dict) -> Dict:
 # HANDLERS DE PRÉSTAMOS
 # ─────────────────────────────────────────────
 
-def _handle_active_loans(params: Dict) -> Dict:
-    rows = biblioteca_repo.sp_get_active_loans()
+def _handle_active_loans(params: Dict, user_role: str = None) -> Dict:
+    rows = biblioteca_repo.sp_get_active_loans(user_role=user_role)
     if not rows:
         return {"type": "text", "message": "✅ No hay préstamos activos en este momento.", "data": []}
 
@@ -204,9 +204,9 @@ def _handle_active_loans(params: Dict) -> Dict:
     }
 
 
-def _handle_overdue_loans(params: Dict) -> Dict:
+def _handle_overdue_loans(params: Dict, user_role: str = None) -> Dict:
     as_of = params.get("as_of_date")
-    rows = biblioteca_repo.sp_overdue_loans(as_of)
+    rows = biblioteca_repo.sp_overdue_loans(as_of, user_role=user_role)
     if not rows:
         return {"type": "text", "message": "✅ No hay préstamos vencidos.", "data": []}
 
@@ -222,13 +222,13 @@ def _handle_overdue_loans(params: Dict) -> Dict:
 # HANDLERS DE ESTADÍSTICAS
 # ─────────────────────────────────────────────
 
-def _handle_count_by_category(params: Dict) -> Dict:
+def _handle_count_by_category(params: Dict, user_role: str = None) -> Dict:
     category = params.get("category_name", "").strip()
     if not category:
         return {"type": "text", "message": "⚠️ Debes especificar una categoría.", "data": []}
 
     try:
-        rows = biblioteca_repo.sp_count_books_by_category(category)
+        rows = biblioteca_repo.sp_count_books_by_category(category, user_role=user_role)
         count = rows[0][0] if rows else 0
         return {
             "type": "text",
@@ -243,14 +243,14 @@ def _handle_count_by_category(params: Dict) -> Dict:
         }
 
 
-def _handle_top_authors(params: Dict) -> Dict:
+def _handle_top_authors(params: Dict, user_role: str = None) -> Dict:
     year = params.get("year")
     month = params.get("month")
     if not year or not month:
         return {"type": "text", "message": "⚠️ Debes especificar año y mes.", "data": []}
 
     try:
-        rows = biblioteca_repo.sp_top_authors_by_loans_month(int(year), int(month))
+        rows = biblioteca_repo.sp_top_authors_by_loans_month(int(year), int(month), user_role=user_role)
         if not rows:
             return {
                 "type": "text",
@@ -271,13 +271,13 @@ def _handle_top_authors(params: Dict) -> Dict:
 # HANDLERS AVANZADOS (BÚSQUEDAS Y ESTADÍSTICAS)
 # ─────────────────────────────────────────────
 
-def _handle_search_books_by_author(params: Dict) -> Dict:
+def _handle_search_books_by_author(params: Dict, user_role: str = None) -> Dict:
     """Busca libros por autor."""
     author = params.get("author_name", "").strip()
     if not author:
         return {"type": "text", "message": "⚠️ Debes especificar un autor.", "data": []}
 
-    rows = biblioteca_repo.sp_search_books_by_author(author)
+    rows = biblioteca_repo.sp_search_books_by_author(author, user_role=user_role)
     if not rows:
         return {
             "type": "text",
@@ -293,14 +293,14 @@ def _handle_search_books_by_author(params: Dict) -> Dict:
     }
 
 
-def _handle_search_books_by_year(params: Dict) -> Dict:
+def _handle_search_books_by_year(params: Dict, user_role: str = None) -> Dict:
     """Busca libros por año de publicación."""
     year = params.get("year")
     if not year:
         return {"type": "text", "message": "⚠️ Debes especificar un año.", "data": []}
 
     try:
-        rows = biblioteca_repo.sp_search_books_by_year(int(year))
+        rows = biblioteca_repo.sp_search_books_by_year(int(year), user_role=user_role)
         if not rows:
             return {
                 "type": "text",
@@ -318,13 +318,13 @@ def _handle_search_books_by_year(params: Dict) -> Dict:
         return {"type": "text", "message": f"⚠️ Error: {e}", "data": []}
 
 
-def _handle_search_books_by_genre(params: Dict) -> Dict:
+def _handle_search_books_by_genre(params: Dict, user_role: str = None) -> Dict:
     """Busca libros por género/categoría."""
     genre = params.get("genre", "").strip()
     if not genre:
         return {"type": "text", "message": "⚠️ Debes especificar un género.", "data": []}
 
-    rows = biblioteca_repo.sp_search_books_by_genre(genre)
+    rows = biblioteca_repo.sp_search_books_by_genre(genre, user_role=user_role)
     if not rows:
         return {
             "type": "text",
@@ -340,7 +340,7 @@ def _handle_search_books_by_genre(params: Dict) -> Dict:
     }
 
 
-def _handle_books_by_year_range(params: Dict) -> Dict:
+def _handle_books_by_year_range(params: Dict, user_role: str = None) -> Dict:
     """Busca libros entre dos años."""
     start_year = params.get("start_year")
     end_year = params.get("end_year")
@@ -348,7 +348,7 @@ def _handle_books_by_year_range(params: Dict) -> Dict:
         return {"type": "text", "message": "⚠️ Debes especificar rango de años.", "data": []}
 
     try:
-        rows = biblioteca_repo.sp_get_books_by_year_range(int(start_year), int(end_year))
+        rows = biblioteca_repo.sp_get_books_by_year_range(int(start_year), int(end_year), user_role=user_role)
         if not rows:
             return {
                 "type": "text",
@@ -366,11 +366,11 @@ def _handle_books_by_year_range(params: Dict) -> Dict:
         return {"type": "text", "message": f"⚠️ Error: {e}", "data": []}
 
 
-def _handle_most_loaned_books(params: Dict) -> Dict:
+def _handle_most_loaned_books(params: Dict, user_role: str = None) -> Dict:
     """Obtiene los libros más prestados."""
     limit = params.get("limit", 10)
     try:
-        rows = biblioteca_repo.sp_get_most_loaned_books(int(limit))
+        rows = biblioteca_repo.sp_get_most_loaned_books(int(limit), user_role=user_role)
         if not rows:
             return {"type": "text", "message": "No hay datos de préstamos.", "data": []}
 
@@ -396,11 +396,11 @@ def _handle_most_loaned_books(params: Dict) -> Dict:
         return {"type": "text", "message": f"⚠️ Error: {e}", "data": []}
 
 
-def _handle_least_loaned_books(params: Dict) -> Dict:
+def _handle_least_loaned_books(params: Dict, user_role: str = None) -> Dict:
     """Obtiene los libros menos prestados."""
     limit = params.get("limit", 10)
     try:
-        rows = biblioteca_repo.sp_get_least_loaned_books(int(limit))
+        rows = biblioteca_repo.sp_get_least_loaned_books(int(limit), user_role=user_role)
         if not rows:
             return {"type": "text", "message": "No hay datos de préstamos.", "data": []}
 
@@ -426,7 +426,7 @@ def _handle_least_loaned_books(params: Dict) -> Dict:
         return {"type": "text", "message": f"⚠️ Error: {e}", "data": []}
 
 
-def _handle_loan_history(params: Dict) -> Dict:
+def _handle_loan_history(params: Dict, user_role: str = None) -> Dict:
     """Obtiene el historial de préstamos de un usuario."""
     user_id = params.get("user_id")
     user_name = params.get("user_name", "").strip()
@@ -436,7 +436,7 @@ def _handle_loan_history(params: Dict) -> Dict:
         return {"type": "text", "message": "⚠️ Debes especificar un usuario.", "data": []}
 
     try:
-        rows = biblioteca_repo.sp_get_loan_history(identifier)
+        rows = biblioteca_repo.sp_get_loan_history(identifier, user_role=user_role)
         if not rows:
             return {
                 "type": "text",
@@ -454,14 +454,14 @@ def _handle_loan_history(params: Dict) -> Dict:
         return {"type": "text", "message": f"⚠️ Error: {e}", "data": []}
 
 
-def _handle_category_stats(params: Dict) -> Dict:
+def _handle_category_stats(params: Dict, user_role: str = None) -> Dict:
     """Obtiene estadísticas de una categoría."""
     category = params.get("category_name", "").strip()
     if not category:
         return {"type": "text", "message": "⚠️ Debes especificar una categoría.", "data": []}
 
     try:
-        rows = biblioteca_repo.sp_get_category_stats(category)
+        rows = biblioteca_repo.sp_get_category_stats(category, user_role=user_role)
         if not rows:
             return {
                 "type": "text",
@@ -493,7 +493,7 @@ def _handle_category_stats(params: Dict) -> Dict:
         return {"type": "text", "message": f"⚠️ Error: {e}", "data": []}
 
 
-def _handle_compare_authors(params: Dict) -> Dict:
+def _handle_compare_authors(params: Dict, user_role: str = None) -> Dict:
     """Compara estadísticas de dos autores."""
     author1 = params.get("author1", "").strip()
     author2 = params.get("author2", "").strip()
@@ -502,7 +502,7 @@ def _handle_compare_authors(params: Dict) -> Dict:
         return {"type": "text", "message": "⚠️ Debes especificar dos autores.", "data": []}
 
     try:
-        rows = biblioteca_repo.sp_compare_authors(author1, author2)
+        rows = biblioteca_repo.sp_compare_authors(author1, author2, user_role=user_role)
         if not rows:
             return {
                 "type": "text",
@@ -530,18 +530,18 @@ def _handle_compare_authors(params: Dict) -> Dict:
         return {"type": "text", "message": f"⚠️ Error: {e}", "data": []}
 
 
-def _handle_book_recommendations(params: Dict) -> Dict:
+def _handle_book_recommendations(params: Dict, user_role: str = None) -> Dict:
     """Obtiene recomendaciones de libros."""
     genre = params.get("genre", "").strip()
 
     try:
         if genre:
             # Recomendaciones de un género específico
-            rows = biblioteca_repo.sp_search_books_by_genre(genre)
+            rows = biblioteca_repo.sp_search_books_by_genre(genre, user_role=user_role)
             msg = f"💡 Recomendaciones de {genre}:"
         else:
             # Recomendaciones generales: libros más prestados
-            rows = biblioteca_repo.sp_get_most_loaned_books(5)
+            rows = biblioteca_repo.sp_get_most_loaned_books(5, user_role=user_role)
             msg = "💡 Nuestras recomendaciones (libros populares):"
 
         if not rows:
@@ -565,7 +565,7 @@ def _handle_book_recommendations(params: Dict) -> Dict:
 # FUNCIÓN PÚBLICA: REGISTRAR PRÉSTAMO
 # ─────────────────────────────────────────────
 
-def register_loan(id_libro: int, id_usuario: int = 1) -> Dict[str, Any]:
+def register_loan(id_libro: int, id_usuario: int = 1, user_role: str = None) -> Dict[str, Any]:
     """
     Registra un préstamo para un libro.
     Verifica disponibilidad antes de insertar.
@@ -578,7 +578,7 @@ def register_loan(id_libro: int, id_usuario: int = 1) -> Dict[str, Any]:
         Dict con "success": bool y "message": str
     """
     # Verificar disponibilidad actual
-    book = biblioteca_repo.sp_get_book_by_id(id_libro)
+    book = biblioteca_repo.sp_get_book_by_id(id_libro, user_role=user_role)
     if not book:
         return {"success": False, "message": "El libro no existe en la base de datos."}
 
@@ -600,7 +600,8 @@ def register_loan(id_libro: int, id_usuario: int = 1) -> Dict[str, Any]:
             id_usuario=id_usuario,
             id_libro=id_libro,
             fecha_prestamo=hoy.strftime("%Y-%m-%d"),
-            fecha_devolucion=devolucion.strftime("%Y-%m-%d")
+            fecha_devolucion=devolucion.strftime("%Y-%m-%d"),
+            user_role=user_role
         )
         return {
             "success": True,
@@ -616,6 +617,91 @@ def register_loan(id_libro: int, id_usuario: int = 1) -> Dict[str, Any]:
             "success": False,
             "message": f"❌ No se pudo registrar el préstamo: {e}"
         }
+
+
+# ─────────────────────────────────────────────
+# FUNCIONES PARA OPERACIONES ADMINISTRATIVAS
+# ─────────────────────────────────────────────
+
+def get_category_id(category_name: str, user_role: str = None) -> Optional[int]:
+    """
+    Obtiene el ID de una categoría por nombre.
+    """
+    try:
+        rows = biblioteca_repo.sp_get_categories(user_role=user_role)
+        for row in rows:
+            if row[1].lower() == category_name.lower():  # row[1] es NombreCategoria
+                return row[0]  # row[0] es IDCategoria
+        return None
+    except Exception as e:
+        print(f"Error obteniendo ID de categoría: {e}")
+        return None
+
+
+def get_author_id(author_name: str, user_role: str = None) -> Optional[int]:
+    """
+    Obtiene el ID de un autor por nombre.
+    """
+    try:
+        rows = biblioteca_repo.sp_get_authors(user_role=user_role)
+        for row in rows:
+            if row[1].lower() == author_name.lower():  # row[1] es NombreAutor
+                return row[0]  # row[0] es IDAutor
+        return None
+    except Exception as e:
+        print(f"Error obteniendo ID de autor: {e}")
+        return None
+
+
+def insert_book(titulo: str, isbn: str, year: int, categoria: str, cantidad: int, autores: List[str], user_role: str = None) -> Optional[int]:
+    """
+    Inserta un nuevo libro con sus autores.
+    Retorna el ID del libro insertado o None si falla.
+    """
+    try:
+        # Obtener ID de categoría
+        id_categoria = get_category_id(categoria, user_role)
+        if id_categoria is None:
+            raise ValueError(f"Categoría '{categoria}' no encontrada")
+
+        # Insertar libro
+        id_libro = biblioteca_repo.sp_insert_book(titulo, isbn, year, id_categoria, cantidad, user_role)
+
+        # Insertar relaciones libro-autor
+        for autor in autores:
+            id_autor = get_author_id(autor, user_role)
+            if id_autor is None:
+                raise ValueError(f"Autor '{autor}' no encontrado")
+            biblioteca_repo.sp_insert_book_author(id_libro, id_autor, user_role)
+
+        return id_libro
+    except Exception as e:
+        print(f"Error insertando libro: {e}")
+        return None
+
+
+def insert_author(nombre: str, nacionalidad: str, user_role: str = None) -> Optional[int]:
+    """
+    Inserta un nuevo autor.
+    Retorna el ID del autor insertado o None si falla.
+    """
+    try:
+        return biblioteca_repo.sp_insert_author(nombre, nacionalidad, user_role)
+    except Exception as e:
+        print(f"Error insertando autor: {e}")
+        return None
+
+
+def insert_category(nombre: str, descripcion: str, user_role: str = None) -> Optional[int]:
+    """
+    Inserta una nueva categoría.
+    Retorna el ID de la categoría insertada o None si falla.
+    """
+    try:
+        return biblioteca_repo.sp_insert_category(nombre, descripcion, user_role)
+    except Exception as e:
+        print(f"Error insertando categoría: {e}")
+        return None
 
 
 # ─────────────────────────────────────────────

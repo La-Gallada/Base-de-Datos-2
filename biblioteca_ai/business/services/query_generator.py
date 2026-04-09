@@ -4,7 +4,7 @@ Asegura que todas las queries solo usen datos reales de la BD.
 """
 
 from typing import Dict, List, Optional, Tuple, Any
-from services.db_schema_service import DBSchemaService
+from .db_schema_service import DBSchemaService
 from db import get_connection
 import re
 

@@ -7,7 +7,7 @@ import json
 from typing import Any, Dict, Optional
 
 from ollama import chat
-from services.db_schema_service import DBSchemaService
+from .db_schema_service import DBSchemaService
 
 ALLOWED_INTENTS = {
     "count_books_by_category",

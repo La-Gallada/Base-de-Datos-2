@@ -5,11 +5,11 @@ La IA NUNCA responde con información genérica — solo datos de la biblioteca.
 
 from typing import Any, Dict
 
-from services import ai_service
-from services.biblioteca_service import run_intent_safely
+from .services import ai_service
+from .services.biblioteca_service import run_intent_safely
 
 
-def ask_biblioteca(user_text: str) -> Dict[str, Any]:
+def ask_biblioteca(user_text: str, user_role: str = None) -> Dict[str, Any]:
     """
     Procesa una consulta del usuario.
     
@@ -27,4 +27,4 @@ def ask_biblioteca(user_text: str) -> Dict[str, Any]:
             "data": []
         }
 
-    return run_intent_safely(intent_data)
+    return run_intent_safely(intent_data, user_role)

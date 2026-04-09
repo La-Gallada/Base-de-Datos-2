@@ -105,6 +105,133 @@ CREATE ROLE rol_director;
 -- Rol encargado de administrar préstamos
 CREATE ROLE rol_admin_lends;
 
+---------------------------------------------------------------------
+-- 7. ASIGNACIÓN DE PERMISOS A ROLES
+---------------------------------------------------------------------
+
+/*
+    Se asignan permisos específicos a cada rol según su función:
+    - rol_lectura_books: Solo lectura de libros y consultas básicas
+    - rol_ejecuta_lend: Puede ejecutar procesos de préstamo
+    - rol_director: Control total sobre todas las tablas
+    - rol_admin_lends: Administración completa de préstamos
+*/
+
+-- Permisos para rol_lectura_books (Clientes)
+GRANT SELECT ON dbo.Books TO rol_lectura_books;
+GRANT SELECT ON dbo.Authors TO rol_lectura_books;
+GRANT SELECT ON dbo.Categories TO rol_lectura_books;
+GRANT SELECT ON dbo.BookAuthors TO rol_lectura_books;
+GRANT SELECT ON dbo.Users TO rol_lectura_books;
+GRANT EXECUTE ON dbo.SP_GetBooks TO rol_lectura_books;
+GRANT EXECUTE ON dbo.SP_GetAuthors TO rol_lectura_books;
+GRANT EXECUTE ON dbo.SP_GetCategories TO rol_lectura_books;
+GRANT EXECUTE ON dbo.SP_GetUsers TO rol_lectura_books;
+GRANT EXECUTE ON dbo.SP_SearchBooks TO rol_lectura_books;
+GRANT EXECUTE ON dbo.SP_GetBookById TO rol_lectura_books;
+
+-- Permisos para rol_ejecuta_lend (Clientes - préstamos)
+GRANT SELECT ON dbo.Loans TO rol_ejecuta_lend;
+GRANT INSERT ON dbo.Loans TO rol_ejecuta_lend;
+GRANT UPDATE ON dbo.Books TO rol_ejecuta_lend;
+GRANT EXECUTE ON dbo.SP_InsertLoan TO rol_ejecuta_lend;
+GRANT EXECUTE ON dbo.SP_GetLoansByUser TO rol_ejecuta_lend;
+GRANT EXECUTE ON dbo.SP_ReturnBook TO rol_ejecuta_lend;
+
+-- Permisos para rol_admin_lends (Administradores - gestión de préstamos)
+GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.Loans TO rol_admin_lends;
+GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.Users TO rol_admin_lends;
+GRANT EXECUTE ON dbo.SP_InsertLoan TO rol_admin_lends;
+GRANT EXECUTE ON dbo.SP_UpdateLoan TO rol_admin_lends;
+GRANT EXECUTE ON dbo.SP_DeleteLoan TO rol_admin_lends;
+GRANT EXECUTE ON dbo.SP_GetLoans TO rol_admin_lends;
+GRANT EXECUTE ON dbo.SP_GetLoansByUser TO rol_admin_lends;
+GRANT EXECUTE ON dbo.SP_ReturnBook TO rol_admin_lends;
+GRANT EXECUTE ON dbo.SP_InsertUser TO rol_admin_lends;
+GRANT EXECUTE ON dbo.SP_UpdateUser TO rol_admin_lends;
+GRANT EXECUTE ON dbo.SP_DeleteUser TO rol_admin_lends;
+GRANT EXECUTE ON dbo.SP_GetUsers TO rol_admin_lends;
+
+-- Permisos para rol_director (Control total)
+GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.Books TO rol_director;
+GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.Authors TO rol_director;
+GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.Categories TO rol_director;
+GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.Users TO rol_director;
+GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.Loans TO rol_director;
+GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.BookAuthors TO rol_director;
+
+-- Todos los permisos de ejecución para rol_director
+GRANT EXECUTE ON dbo.SP_InsertBook TO rol_director;
+GRANT EXECUTE ON dbo.SP_UpdateBook TO rol_director;
+GRANT EXECUTE ON dbo.SP_DeleteBook TO rol_director;
+GRANT EXECUTE ON dbo.SP_GetBooks TO rol_director;
+GRANT EXECUTE ON dbo.SP_GetBookById TO rol_director;
+GRANT EXECUTE ON dbo.SP_SearchBooks TO rol_director;
+GRANT EXECUTE ON dbo.SP_InsertAuthor TO rol_director;
+GRANT EXECUTE ON dbo.SP_UpdateAuthor TO rol_director;
+GRANT EXECUTE ON dbo.SP_DeleteAuthor TO rol_director;
+GRANT EXECUTE ON dbo.SP_GetAuthors TO rol_director;
+GRANT EXECUTE ON dbo.SP_InsertCategory TO rol_director;
+GRANT EXECUTE ON dbo.SP_UpdateCategory TO rol_director;
+GRANT EXECUTE ON dbo.SP_DeleteCategory TO rol_director;
+GRANT EXECUTE ON dbo.SP_GetCategories TO rol_director;
+GRANT EXECUTE ON dbo.SP_InsertUser TO rol_director;
+GRANT EXECUTE ON dbo.SP_UpdateUser TO rol_director;
+GRANT EXECUTE ON dbo.SP_DeleteUser TO rol_director;
+GRANT EXECUTE ON dbo.SP_GetUsers TO rol_director;
+GRANT EXECUTE ON dbo.SP_InsertLoan TO rol_director;
+GRANT EXECUTE ON dbo.SP_UpdateLoan TO rol_director;
+GRANT EXECUTE ON dbo.SP_DeleteLoan TO rol_director;
+GRANT EXECUTE ON dbo.SP_GetLoans TO rol_director;
+GRANT EXECUTE ON dbo.SP_GetLoansByUser TO rol_director;
+GRANT EXECUTE ON dbo.SP_ReturnBook TO rol_director;
+GRANT EXECUTE ON dbo.SP_InsertBookAuthor TO rol_director;
+GRANT EXECUTE ON dbo.SP_DeleteBookAuthor TO rol_director;
+
+-- Grants directos a login_dirBiblioteca para asegurar ejecución en el entorno actual
+GRANT EXECUTE ON dbo.SP_GetUsers TO usr_dirBiblioteca;
+GRANT EXECUTE ON dbo.SP_GetAuthors TO usr_dirBiblioteca;
+GRANT EXECUTE ON dbo.SP_GetCategories TO usr_dirBiblioteca;
+GRANT EXECUTE ON dbo.SP_GetBooks TO usr_dirBiblioteca;
+GRANT EXECUTE ON dbo.SP_SearchBooks TO usr_dirBiblioteca;
+GRANT EXECUTE ON dbo.SP_GetBookById TO usr_dirBiblioteca;
+GRANT EXECUTE ON dbo.SP_InsertLoan TO usr_dirBiblioteca;
+
+---------------------------------------------------------------------
+-- 8. ASIGNACIÓN DE USUARIOS A ROLES
+---------------------------------------------------------------------
+
+/*
+    Se asignan los usuarios creados a sus respectivos roles.
+    Cada usuario tendrá los permisos correspondientes a su rol.
+*/
+
+-- Asignar usuarios a roles
+ALTER ROLE rol_lectura_books ADD MEMBER usr_client;
+ALTER ROLE rol_ejecuta_lend ADD MEMBER usr_client;
+
+ALTER ROLE rol_admin_lends ADD MEMBER usr_dirBiblioteca;
+ALTER ROLE rol_director ADD MEMBER usr_dirBiblioteca;
+
+-- Permisos directos para el usuario de base de datos del director
+GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.Books TO usr_dirBiblioteca;
+GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.Authors TO usr_dirBiblioteca;
+GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.Categories TO usr_dirBiblioteca;
+GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.BookAuthors TO usr_dirBiblioteca;
+GRANT EXECUTE ON dbo.SP_InsertBook TO usr_dirBiblioteca;
+GRANT EXECUTE ON dbo.SP_InsertAuthor TO usr_dirBiblioteca;
+GRANT EXECUTE ON dbo.SP_InsertCategory TO usr_dirBiblioteca;
+GRANT EXECUTE ON dbo.SP_InsertBookAuthor TO usr_dirBiblioteca;
+GRANT EXECUTE ON dbo.SP_GetUsers TO usr_dirBiblioteca;
+GRANT EXECUTE ON dbo.SP_GetAuthors TO usr_dirBiblioteca;
+GRANT EXECUTE ON dbo.SP_GetCategories TO usr_dirBiblioteca;
+GRANT EXECUTE ON dbo.SP_GetBooks TO usr_dirBiblioteca;
+GRANT EXECUTE ON dbo.SP_SearchBooks TO usr_dirBiblioteca;
+GRANT EXECUTE ON dbo.SP_GetBookById TO usr_dirBiblioteca;
+
+-- El usuario de autor por ahora no tiene permisos específicos asignados
+-- ALTER ROLE rol_autor ADD MEMBER usr_author;
+
 ---------------------------------------------------------
 --               TABLAS DE LA BASE DE DATOS            --
 ---------------------------------------------------------
@@ -509,6 +636,41 @@ BEGIN
 END
 GO
 
+-- SP_UpdateCategory
+CREATE PROCEDURE dbo.SP_UpdateCategory
+    @IDCategoria INT,
+    @NombreCategoria NVARCHAR(50),
+    @Descripcion NVARCHAR(200)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE dbo.Categories
+    SET NombreCategoria = @NombreCategoria,
+        Descripcion = @Descripcion
+    WHERE IDCategoria = @IDCategoria;
+END
+GO
+
+-- SP_DeleteCategory
+CREATE PROCEDURE dbo.SP_DeleteCategory
+    @IDCategoria INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Verificar que no tenga libros asociados
+    IF EXISTS (SELECT 1 FROM dbo.Books WHERE IDCategoria = @IDCategoria)
+    BEGIN
+        RAISERROR('No se puede eliminar la categoría porque tiene libros asociados.', 16, 1);
+        RETURN;
+    END
+
+    DELETE FROM dbo.Categories
+    WHERE IDCategoria = @IDCategoria;
+END
+GO
+
 
 /* ============================================================
    TABLA: BOOKS
@@ -645,6 +807,51 @@ BEGIN
 END
 GO
 
+-- SP_GetBookById
+CREATE PROCEDURE dbo.SP_GetBookById
+    @IDLibro INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT 
+        B.IDLibro,
+        B.TituloLibro,
+        B.ISBN,
+        B.AnioPublicacion,
+        B.CantidadTotal,
+        B.CantidadDisponible,
+        C.NombreCategoria
+    FROM dbo.Books B
+    INNER JOIN dbo.Categories C
+        ON B.IDCategoria = C.IDCategoria
+    WHERE B.IDLibro = @IDLibro;
+END
+GO
+
+-- SP_SearchBooks
+CREATE PROCEDURE dbo.SP_SearchBooks
+    @Title NVARCHAR(100)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT 
+        B.IDLibro,
+        B.TituloLibro,
+        B.ISBN,
+        B.AnioPublicacion,
+        B.CantidadTotal,
+        B.CantidadDisponible,
+        C.NombreCategoria
+    FROM dbo.Books B
+    INNER JOIN dbo.Categories C
+        ON B.IDCategoria = C.IDCategoria
+    WHERE B.TituloLibro LIKE '%' + @Title + '%';
+END
+GO
+GO
+
 
 /* ============================================================
    TABLA: LOANS
@@ -759,6 +966,68 @@ BEGIN
     FROM dbo.Loans L
     INNER JOIN dbo.Users U ON L.IDUsuario = U.IDUsuario
     INNER JOIN dbo.Books B ON L.IDLibro = B.IDLibro;
+END
+GO
+
+-- SP_UpdateLoan
+CREATE PROCEDURE dbo.SP_UpdateLoan
+    @IDLoan INT,
+    @IDUsuario INT,
+    @IDLibro INT,
+    @FechaPrestamo DATE,
+    @FechaDevolucion DATE,
+    @FechaDevolucionReal DATE = NULL,
+    @Estado VARCHAR(20)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE dbo.Loans
+    SET IDUsuario = @IDUsuario,
+        IDLibro = @IDLibro,
+        FechaPrestamo = @FechaPrestamo,
+        FechaDevolucion = @FechaDevolucion,
+        FechaDevolucionReal = @FechaDevolucionReal,
+        Estado = @Estado
+    WHERE IDLoan = @IDLoan;
+END
+GO
+
+-- SP_GetLoans (alias para SP_GetAllLoans)
+CREATE PROCEDURE dbo.SP_GetLoans
+AS
+BEGIN
+    EXEC dbo.SP_GetAllLoans;
+END
+GO
+
+-- SP_GetLoansByUser
+CREATE PROCEDURE dbo.SP_GetLoansByUser
+    @IDUsuario INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT 
+        L.IDLoan,
+        B.TituloLibro,
+        L.FechaPrestamo,
+        L.FechaDevolucion,
+        L.FechaDevolucionReal,
+        L.Estado
+    FROM dbo.Loans L
+    INNER JOIN dbo.Books B ON L.IDLibro = B.IDLibro
+    WHERE L.IDUsuario = @IDUsuario;
+END
+GO
+
+-- SP_ReturnBook (alias para SP_ReturnLoan)
+CREATE PROCEDURE dbo.SP_ReturnBook
+    @IDLoan INT,
+    @FechaDevolucionReal DATE
+AS
+BEGIN
+    EXEC dbo.SP_ReturnLoan @IDLoan, @FechaDevolucionReal;
 END
 GO
 -- SP_DeleteLoan
