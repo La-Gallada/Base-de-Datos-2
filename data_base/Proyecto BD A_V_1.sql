@@ -153,8 +153,7 @@ GRANT EXECUTE ON dbo.SP_ReturnBook TO rol_ejecuta_lend;
 -- ─────────────────────────────────────────────
 -- GRANTS para rol_ejecuta_lend (Clientes - préstamos)
 -- ─────────────────────────────────────────────
-GRANT EXECUTE ON dbo.SP_GetLoanHistoryById TO rol_ejecuta_lend;
-GRANT EXECUTE ON dbo.SP_GetLoanHistoryByName TO rol_ejecuta_lend;
+
 GRANT EXECUTE ON dbo.SP_OverdueLoans TO rol_ejecuta_lend;
 
 -- Permisos para rol_admin_lends (Administradores - gestión de préstamos)
@@ -1818,7 +1817,8 @@ GROUP BY A.NombreAutor, FORMAT(L.FechaPrestamo, 'yyyy-MM');
 --vw_OverdueLoans: Permite identificar rápidamente los préstamos vencidos sin necesidad de lógica adicional en cada consulta.
 --vw_AuthorLoanStats: Proporciona una base para análisis estadísticos de préstamos por autor y periodo, útil para reportes.
 
-
+REVOKE EXECUTE ON dbo.SP_GetLoanHistoryById FROM rol_ejecuta_lend;
+REVOKE EXECUTE ON dbo.SP_GetLoanHistoryByName FROM rol_ejecuta_lend;
 
 
 

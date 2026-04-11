@@ -460,32 +460,41 @@ def _handle_least_loaned_books(params: Dict, user_role: str = None) -> Dict:
 
 
 def _handle_loan_history(params: Dict, user_role: str = None) -> Dict:
-    """Obtiene el historial de préstamos de un usuario."""
+    if user_role not in ("Administrador", "Director"):
+        return {
+            "type": "text",
+            "message": "🔒 No tienes permisos para ver el historial de préstamos.",
+            "data": []
+        }
+
     user_id = params.get("user_id")
     user_name = params.get("user_name", "").strip()
 
     identifier = user_id if user_id else user_name
     if not identifier:
-        return {"type": "text", "message": "⚠️ Debes especificar un usuario.", "data": []}
+        return {
+            "type": "text",
+            "message": "⚠️ Por favor especifica un usuario. Ejemplo: 'historial de Carlos Ramírez'",
+            "data": []
+        }
 
     try:
         rows = biblioteca_repo.sp_get_loan_history(identifier, user_role=user_role)
         if not rows:
             return {
                 "type": "text",
-                "message": f"❌ No hay historial de préstamos para este usuario.",
+                "message": "❌ No hay historial de préstamos para este usuario.",
                 "data": []
             }
 
         loans = _rows_to_loans(rows)
         return {
             "type": "loans",
-            "message": f"📖 Historial de préstamos:",
+            "message": "📖 Historial de préstamos:",
             "data": loans
         }
     except Exception as e:
         return {"type": "text", "message": f"⚠️ Error: {e}", "data": []}
-
 
 def _handle_category_stats(params: Dict, user_role: str = None) -> Dict:
     """Obtiene estadísticas de una categoría."""
