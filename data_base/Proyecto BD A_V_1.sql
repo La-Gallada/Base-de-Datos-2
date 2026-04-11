@@ -129,6 +129,19 @@ GRANT EXECUTE ON dbo.SP_GetCategories TO rol_lectura_books;
 GRANT EXECUTE ON dbo.SP_GetUsers TO rol_lectura_books;
 GRANT EXECUTE ON dbo.SP_SearchBooks TO rol_lectura_books;
 GRANT EXECUTE ON dbo.SP_GetBookById TO rol_lectura_books;
+-- ─────────────────────────────────────────────
+-- GRANTS para rol_lectura_books (Clientes)
+-- ─────────────────────────────────────────────
+GRANT EXECUTE ON dbo.SP_SearchBooksByAuthor TO rol_lectura_books;
+GRANT EXECUTE ON dbo.SP_SearchBooksByYear TO rol_lectura_books;
+GRANT EXECUTE ON dbo.SP_GetBooksByYearRange TO rol_lectura_books;
+GRANT EXECUTE ON dbo.SP_SearchBooksByGenre TO rol_lectura_books;
+GRANT EXECUTE ON dbo.SP_GetMostLoanedBooks TO rol_lectura_books;
+GRANT EXECUTE ON dbo.SP_GetLeastLoanedBooks TO rol_lectura_books;
+GRANT EXECUTE ON dbo.SP_GetCategoryStats TO rol_lectura_books;
+GRANT EXECUTE ON dbo.SP_CompareAuthors TO rol_lectura_books;
+GRANT EXECUTE ON dbo.SP_CountBooksByCategory TO rol_lectura_books;
+GRANT EXECUTE ON dbo.SP_TopAuthorsByLoans TO rol_lectura_books;
 
 -- Permisos para rol_ejecuta_lend (Clientes - préstamos)
 GRANT SELECT ON dbo.Loans TO rol_ejecuta_lend;
@@ -137,6 +150,12 @@ GRANT UPDATE ON dbo.Books TO rol_ejecuta_lend;
 GRANT EXECUTE ON dbo.SP_InsertLoan TO rol_ejecuta_lend;
 GRANT EXECUTE ON dbo.SP_GetLoansByUser TO rol_ejecuta_lend;
 GRANT EXECUTE ON dbo.SP_ReturnBook TO rol_ejecuta_lend;
+-- ─────────────────────────────────────────────
+-- GRANTS para rol_ejecuta_lend (Clientes - préstamos)
+-- ─────────────────────────────────────────────
+GRANT EXECUTE ON dbo.SP_GetLoanHistoryById TO rol_ejecuta_lend;
+GRANT EXECUTE ON dbo.SP_GetLoanHistoryByName TO rol_ejecuta_lend;
+GRANT EXECUTE ON dbo.SP_OverdueLoans TO rol_ejecuta_lend;
 
 -- Permisos para rol_admin_lends (Administradores - gestión de préstamos)
 GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.Loans TO rol_admin_lends;
@@ -151,6 +170,23 @@ GRANT EXECUTE ON dbo.SP_InsertUser TO rol_admin_lends;
 GRANT EXECUTE ON dbo.SP_UpdateUser TO rol_admin_lends;
 GRANT EXECUTE ON dbo.SP_DeleteUser TO rol_admin_lends;
 GRANT EXECUTE ON dbo.SP_GetUsers TO rol_admin_lends;
+GRANT EXECUTE ON dbo.SP_GetActiveLoans TO rol_admin_lends;
+-- ─────────────────────────────────────────────
+-- GRANTS para rol_admin_lends (Administradores)
+-- ─────────────────────────────────────────────
+GRANT EXECUTE ON dbo.SP_SearchBooksByAuthor TO rol_admin_lends;
+GRANT EXECUTE ON dbo.SP_SearchBooksByYear TO rol_admin_lends;
+GRANT EXECUTE ON dbo.SP_GetBooksByYearRange TO rol_admin_lends;
+GRANT EXECUTE ON dbo.SP_SearchBooksByGenre TO rol_admin_lends;
+GRANT EXECUTE ON dbo.SP_GetMostLoanedBooks TO rol_admin_lends;
+GRANT EXECUTE ON dbo.SP_GetLeastLoanedBooks TO rol_admin_lends;
+GRANT EXECUTE ON dbo.SP_GetLoanHistoryById TO rol_admin_lends;
+GRANT EXECUTE ON dbo.SP_GetLoanHistoryByName TO rol_admin_lends;
+GRANT EXECUTE ON dbo.SP_GetCategoryStats TO rol_admin_lends;
+GRANT EXECUTE ON dbo.SP_CompareAuthors TO rol_admin_lends;
+GRANT EXECUTE ON dbo.SP_CountBooksByCategory TO rol_admin_lends;
+GRANT EXECUTE ON dbo.SP_TopAuthorsByLoans TO rol_admin_lends;
+GRANT EXECUTE ON dbo.SP_OverdueLoans TO rol_admin_lends;
 
 -- Permisos para rol_director (Control total)
 GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.Books TO rol_director;
@@ -187,6 +223,24 @@ GRANT EXECUTE ON dbo.SP_GetLoansByUser TO rol_director;
 GRANT EXECUTE ON dbo.SP_ReturnBook TO rol_director;
 GRANT EXECUTE ON dbo.SP_InsertBookAuthor TO rol_director;
 GRANT EXECUTE ON dbo.SP_DeleteBookAuthor TO rol_director;
+GRANT EXECUTE ON dbo.SP_SearchBooksByAuthor TO rol_director;
+GRANT EXECUTE ON dbo.SP_SearchBooksByYear TO rol_director;
+GRANT EXECUTE ON dbo.SP_GetBooksByYearRange TO rol_director;
+GRANT EXECUTE ON dbo.SP_SearchBooksByGenre TO rol_director;
+GRANT EXECUTE ON dbo.SP_GetMostLoanedBooks TO rol_director;
+GRANT EXECUTE ON dbo.SP_GetLeastLoanedBooks TO rol_director;
+GRANT EXECUTE ON dbo.SP_GetLoanHistoryById TO rol_director;
+GRANT EXECUTE ON dbo.SP_GetLoanHistoryByName TO rol_director;
+GRANT EXECUTE ON dbo.SP_GetCategoryStats TO rol_director;
+GRANT EXECUTE ON dbo.SP_CompareAuthors TO rol_director;
+GRANT EXECUTE ON dbo.SP_CountBooksByCategory TO rol_director;
+GRANT EXECUTE ON dbo.SP_TopAuthorsByLoans TO rol_director;
+GRANT EXECUTE ON dbo.SP_OverdueLoans TO rol_director;
+GO
+
+	GRANT EXECUTE ON dbo.SP_GetActiveLoans TO rol_admin_lends;
+	GRANT EXECUTE ON dbo.SP_GetActiveLoans TO usr_dirBiblioteca;
+
 -- Grants directos a login_dirBiblioteca para asegurar ejecución en el entorno actual
 GRANT EXECUTE ON dbo.SP_GetUsers TO usr_dirBiblioteca;
 GRANT EXECUTE ON dbo.SP_GetAuthors TO usr_dirBiblioteca;
@@ -195,6 +249,7 @@ GRANT EXECUTE ON dbo.SP_GetBooks TO usr_dirBiblioteca;
 GRANT EXECUTE ON dbo.SP_SearchBooks TO usr_dirBiblioteca;
 GRANT EXECUTE ON dbo.SP_GetBookById TO usr_dirBiblioteca;
 GRANT EXECUTE ON dbo.SP_InsertLoan TO usr_dirBiblioteca;
+
 
 ---------------------------------------------------------------------
 -- 8. ASIGNACIÓN DE USUARIOS A ROLES
@@ -1166,6 +1221,309 @@ BEGIN
 END
 GO
 
+-- ─────────────────────────────────────────────
+-- SP_SearchBooksByAuthor
+-- ─────────────────────────────────────────────
+CREATE PROCEDURE dbo.SP_SearchBooksByAuthor
+    @AuthorName NVARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT DISTINCT
+        B.IDLibro,
+        B.TituloLibro,
+        B.ISBN,
+        B.AnioPublicacion,
+        B.CantidadTotal,
+        B.CantidadDisponible,
+        C.NombreCategoria
+    FROM dbo.Books B
+    INNER JOIN dbo.Categories C ON B.IDCategoria = C.IDCategoria
+    INNER JOIN dbo.BookAuthors BA ON B.IDLibro = BA.IDLibros
+    INNER JOIN dbo.Authors A ON BA.IDAutores = A.IDAutor
+    WHERE A.NombreAutor LIKE '%' + @AuthorName + '%'
+    ORDER BY B.TituloLibro;
+END
+GO
+
+-- ─────────────────────────────────────────────
+-- SP_SearchBooksByYear
+-- ─────────────────────────────────────────────
+CREATE PROCEDURE dbo.SP_SearchBooksByYear
+    @Year INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT 
+        B.IDLibro,
+        B.TituloLibro,
+        B.ISBN,
+        B.AnioPublicacion,
+        B.CantidadTotal,
+        B.CantidadDisponible,
+        C.NombreCategoria
+    FROM dbo.Books B
+    INNER JOIN dbo.Categories C ON B.IDCategoria = C.IDCategoria
+    WHERE B.AnioPublicacion = @Year
+    ORDER BY B.TituloLibro;
+END
+GO
+
+-- ─────────────────────────────────────────────
+-- SP_GetBooksByYearRange
+-- ─────────────────────────────────────────────
+CREATE PROCEDURE dbo.SP_GetBooksByYearRange
+    @StartYear INT,
+    @EndYear INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT 
+        B.IDLibro,
+        B.TituloLibro,
+        B.ISBN,
+        B.AnioPublicacion,
+        B.CantidadTotal,
+        B.CantidadDisponible,
+        C.NombreCategoria
+    FROM dbo.Books B
+    INNER JOIN dbo.Categories C ON B.IDCategoria = C.IDCategoria
+    WHERE B.AnioPublicacion BETWEEN @StartYear AND @EndYear
+    ORDER BY B.AnioPublicacion DESC, B.TituloLibro;
+END
+GO
+
+-- ─────────────────────────────────────────────
+-- SP_SearchBooksByGenre
+-- ─────────────────────────────────────────────
+CREATE PROCEDURE dbo.SP_SearchBooksByGenre
+    @Genre NVARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT 
+        B.IDLibro,
+        B.TituloLibro,
+        B.ISBN,
+        B.AnioPublicacion,
+        B.CantidadTotal,
+        B.CantidadDisponible,
+        C.NombreCategoria
+    FROM dbo.Books B
+    INNER JOIN dbo.Categories C ON B.IDCategoria = C.IDCategoria
+    WHERE C.NombreCategoria LIKE '%' + @Genre + '%'
+       OR C.Descripcion LIKE '%' + @Genre + '%'
+    ORDER BY B.TituloLibro;
+END
+GO
+
+-- ─────────────────────────────────────────────
+-- SP_GetMostLoanedBooks
+-- ─────────────────────────────────────────────
+CREATE PROCEDURE dbo.SP_GetMostLoanedBooks
+    @Limit INT = 10
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT TOP (@Limit)
+        B.IDLibro,
+        B.TituloLibro,
+        B.ISBN,
+        B.AnioPublicacion,
+        B.CantidadTotal,
+        B.CantidadDisponible,
+        C.NombreCategoria,
+        COUNT(L.IDLoan) AS TotalPrestamos
+    FROM dbo.Books B
+    INNER JOIN dbo.Categories C ON B.IDCategoria = C.IDCategoria
+    LEFT JOIN dbo.Loans L ON B.IDLibro = L.IDLibro
+    GROUP BY B.IDLibro, B.TituloLibro, B.ISBN, B.AnioPublicacion,
+             B.CantidadTotal, B.CantidadDisponible, C.NombreCategoria
+    ORDER BY COUNT(L.IDLoan) DESC, B.TituloLibro;
+END
+GO
+
+-- ─────────────────────────────────────────────
+-- SP_GetLeastLoanedBooks
+-- ─────────────────────────────────────────────
+CREATE PROCEDURE dbo.SP_GetLeastLoanedBooks
+    @Limit INT = 10
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT TOP (@Limit)
+        B.IDLibro,
+        B.TituloLibro,
+        B.ISBN,
+        B.AnioPublicacion,
+        B.CantidadTotal,
+        B.CantidadDisponible,
+        C.NombreCategoria,
+        COUNT(L.IDLoan) AS TotalPrestamos
+    FROM dbo.Books B
+    INNER JOIN dbo.Categories C ON B.IDCategoria = C.IDCategoria
+    LEFT JOIN dbo.Loans L ON B.IDLibro = L.IDLibro
+    GROUP BY B.IDLibro, B.TituloLibro, B.ISBN, B.AnioPublicacion,
+             B.CantidadTotal, B.CantidadDisponible, C.NombreCategoria
+    ORDER BY COUNT(L.IDLoan) ASC, B.TituloLibro;
+END
+GO
+
+-- ─────────────────────────────────────────────
+-- SP_GetLoanHistoryById
+-- ─────────────────────────────────────────────
+CREATE PROCEDURE dbo.SP_GetLoanHistoryById
+    @IDUsuario INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT 
+        L.IDLoan,
+        CONCAT(U.NombreUsuario, ' ', U.ApellidoUsuario) AS Usuario,
+        B.TituloLibro,
+        L.FechaPrestamo,
+        L.FechaDevolucion,
+        L.Estado
+    FROM dbo.Loans L
+    INNER JOIN dbo.Users U ON L.IDUsuario = U.IDUsuario
+    INNER JOIN dbo.Books B ON L.IDLibro = B.IDLibro
+    WHERE L.IDUsuario = @IDUsuario
+    ORDER BY L.FechaPrestamo DESC;
+END
+GO
+
+-- ─────────────────────────────────────────────
+-- SP_GetLoanHistoryByName
+-- ─────────────────────────────────────────────
+CREATE PROCEDURE dbo.SP_GetLoanHistoryByName
+    @UserName NVARCHAR(100)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT 
+        L.IDLoan,
+        CONCAT(U.NombreUsuario, ' ', U.ApellidoUsuario) AS Usuario,
+        B.TituloLibro,
+        L.FechaPrestamo,
+        L.FechaDevolucion,
+        L.Estado
+    FROM dbo.Loans L
+    INNER JOIN dbo.Users U ON L.IDUsuario = U.IDUsuario
+    INNER JOIN dbo.Books B ON L.IDLibro = B.IDLibro
+    WHERE CONCAT(U.NombreUsuario, ' ', U.ApellidoUsuario) LIKE '%' + @UserName + '%'
+    ORDER BY L.FechaPrestamo DESC;
+END
+GO
+
+-- ─────────────────────────────────────────────
+-- SP_GetCategoryStats
+-- ─────────────────────────────────────────────
+CREATE PROCEDURE dbo.SP_GetCategoryStats
+    @CategoryName NVARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT 
+        C.IDCategoria,
+        C.NombreCategoria,
+        C.Descripcion,
+        COUNT(DISTINCT B.IDLibro) AS TotalLibros,
+        COUNT(DISTINCT L.IDLoan) AS TotalPrestamos,
+        SUM(B.CantidadDisponible) AS LibrosDisponibles,
+        SUM(B.CantidadTotal - B.CantidadDisponible) AS LibrosPrestados
+    FROM dbo.Categories C
+    LEFT JOIN dbo.Books B ON C.IDCategoria = B.IDCategoria
+    LEFT JOIN dbo.Loans L ON B.IDLibro = L.IDLibro
+    WHERE C.NombreCategoria LIKE '%' + @CategoryName + '%'
+    GROUP BY C.IDCategoria, C.NombreCategoria, C.Descripcion;
+END
+GO
+
+-- ─────────────────────────────────────────────
+-- SP_CompareAuthors
+-- ─────────────────────────────────────────────
+CREATE PROCEDURE dbo.SP_CompareAuthors
+    @Author1 NVARCHAR(50),
+    @Author2 NVARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT 
+        A.NombreAutor,
+        COUNT(DISTINCT B.IDLibro) AS TotalLibros,
+        COUNT(L.IDLoan) AS TotalPrestamos
+    FROM dbo.Authors A
+    LEFT JOIN dbo.BookAuthors BA ON A.IDAutor = BA.IDAutores
+    LEFT JOIN dbo.Books B ON BA.IDLibros = B.IDLibro
+    LEFT JOIN dbo.Loans L ON B.IDLibro = L.IDLibro
+    WHERE A.NombreAutor LIKE '%' + @Author1 + '%'
+       OR A.NombreAutor LIKE '%' + @Author2 + '%'
+    GROUP BY A.IDAutor, A.NombreAutor
+    ORDER BY A.NombreAutor;
+END
+GO
+
+-- ─────────────────────────────────────────────
+-- SP_CountBooksByCategory
+-- ─────────────────────────────────────────────
+CREATE PROCEDURE dbo.SP_CountBooksByCategory
+    @CategoryName NVARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT COUNT(*) AS TotalLibros
+    FROM dbo.Books B
+    INNER JOIN dbo.Categories C ON B.IDCategoria = C.IDCategoria
+    WHERE C.NombreCategoria LIKE '%' + @CategoryName + '%';
+END
+GO
+
+-- ─────────────────────────────────────────────
+-- SP_TopAuthorsByLoans
+-- ─────────────────────────────────────────────
+CREATE PROCEDURE dbo.SP_TopAuthorsByLoans
+    @Year INT,
+    @Month INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT 
+        A.NombreAutor,
+        COUNT(*) AS TotalPrestamos
+    FROM dbo.Loans L
+    INNER JOIN dbo.Books B ON L.IDLibro = B.IDLibro
+    INNER JOIN dbo.BookAuthors BA ON B.IDLibro = BA.IDLibros
+    INNER JOIN dbo.Authors A ON BA.IDAutores = A.IDAutor
+    WHERE YEAR(L.FechaPrestamo) = @Year
+      AND MONTH(L.FechaPrestamo) = @Month
+    GROUP BY A.IDAutor, A.NombreAutor
+    ORDER BY TotalPrestamos DESC;
+END
+GO
+
+-- ─────────────────────────────────────────────
+-- SP_OverdueLoans
+-- ─────────────────────────────────────────────
+CREATE PROCEDURE dbo.SP_OverdueLoans
+    @AsOfDate DATE = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @Fecha DATE = ISNULL(@AsOfDate, GETDATE());
+    SELECT 
+        L.IDLoan,
+        CONCAT(U.NombreUsuario, ' ', U.ApellidoUsuario) AS Usuario,
+        B.TituloLibro,
+        L.FechaPrestamo,
+        L.FechaDevolucion,
+        L.Estado
+    FROM dbo.Loans L
+    INNER JOIN dbo.Users U ON L.IDUsuario = U.IDUsuario
+    INNER JOIN dbo.Books B ON L.IDLibro = B.IDLibro
+    WHERE L.Estado = 'Prestado'
+      AND L.FechaDevolucion < @Fecha;
+END
+GO
 
 ---------------------------------------------------------
 -- INSERTAR CATEGORÍAS
@@ -1459,7 +1817,6 @@ GROUP BY A.NombreAutor, FORMAT(L.FechaPrestamo, 'yyyy-MM');
 --vw_ActiveLoans: Facilita la obtención de préstamos activos, simplificando consultas frecuentes del sistema.
 --vw_OverdueLoans: Permite identificar rápidamente los préstamos vencidos sin necesidad de lógica adicional en cada consulta.
 --vw_AuthorLoanStats: Proporciona una base para análisis estadísticos de préstamos por autor y periodo, útil para reportes.
-
 
 
 
