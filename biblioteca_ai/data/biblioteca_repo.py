@@ -148,8 +148,13 @@ def sp_get_categories(user_role=None):
 def sp_get_active_loans(user_role=None):
     with get_connection(user_role) as cn:
         cur = cn.cursor()
-        cur.execute("EXEC dbo.SP_GetActiveLoans")
-        return cur.fetchall()
+        try:
+            cur.execute("EXEC dbo.SP_GetActiveLoans")
+            return cur.fetchall()
+        except Exception as e:
+            if '229' in str(e):
+                raise PermissionError("No tienes permisos para ver los préstamos activos.")
+            raise
 
 
 def sp_count_books_by_category(category_name: str, user_role=None):
@@ -206,13 +211,6 @@ def sp_search_books_by_author(author_name: str, user_role=None):
             ORDER BY B.TituloLibro
         """, (f"%{author_name}%",))
         return cur.fetchall()
-
-
-def sp_get_author_books(author_name: str, user_role=None):
-    """
-    Obtiene todos los libros de un autor con datos completos.
-    """
-    return sp_search_books_by_author(author_name, user_role=user_role)
 
 
 # ─────────────────────────────────────────────
@@ -311,13 +309,13 @@ def sp_get_most_loaned_books(limit: int = 10, user_role=None):
                 B.CantidadTotal,
                 B.CantidadDisponible,
                 C.NombreCategoria,
-                COUNT(L.IDPrestamo) AS TotalPrestamos
+                COUNT(L.IDLoan) AS TotalPrestamos
             FROM dbo.Books B
             INNER JOIN dbo.Categories C ON B.IDCategoria = C.IDCategoria
             LEFT JOIN dbo.Loans L ON B.IDLibro = L.IDLibro
             GROUP BY B.IDLibro, B.TituloLibro, B.ISBN, B.AnioPublicacion, 
                      B.CantidadTotal, B.CantidadDisponible, C.NombreCategoria
-            ORDER BY COUNT(L.IDPrestamo) DESC, B.TituloLibro
+            ORDER BY COUNT(L.IDLoan) DESC, B.TituloLibro
         """)
         return cur.fetchall()
 
@@ -337,13 +335,13 @@ def sp_get_least_loaned_books(limit: int = 10, user_role=None):
                 B.CantidadTotal,
                 B.CantidadDisponible,
                 C.NombreCategoria,
-                COUNT(L.IDPrestamo) AS TotalPrestamos
+                COUNT(L.IDLoan) AS TotalPrestamos
             FROM dbo.Books B
             INNER JOIN dbo.Categories C ON B.IDCategoria = C.IDCategoria
             LEFT JOIN dbo.Loans L ON B.IDLibro = L.IDLibro
             GROUP BY B.IDLibro, B.TituloLibro, B.ISBN, B.AnioPublicacion, 
                      B.CantidadTotal, B.CantidadDisponible, C.NombreCategoria
-            ORDER BY COUNT(L.IDPrestamo) ASC, B.TituloLibro
+            ORDER BY COUNT(L.IDLoan) ASC, B.TituloLibro
         """)
         return cur.fetchall()
 
@@ -359,8 +357,8 @@ def sp_get_loan_history(user_identifier, user_role=None):
         if isinstance(user_identifier, int):
             cur.execute("""
                 SELECT 
-                    L.IDPrestamo,
-                    CONCAT(U.Nombre, ' ', U.Apellido) AS Usuario,
+                    L.IDLoan,
+                    CONCAT(U.NombreUsuario, ' ', U.ApellidoUsuario) AS Usuario,
                     B.TituloLibro,
                     L.FechaPrestamo,
                     L.FechaDevolucion,
@@ -374,8 +372,8 @@ def sp_get_loan_history(user_identifier, user_role=None):
         else:
             cur.execute("""
                 SELECT 
-                    L.IDPrestamo,
-                    CONCAT(U.Nombre, ' ', U.Apellido) AS Usuario,
+                    L.IDLoan,
+                    CONCAT(U.NombreUsuario, ' ', U.ApellidoUsuario) AS Usuario,
                     B.TituloLibro,
                     L.FechaPrestamo,
                     L.FechaDevolucion,
@@ -383,7 +381,7 @@ def sp_get_loan_history(user_identifier, user_role=None):
                 FROM dbo.Loans L
                 INNER JOIN dbo.Users U ON L.IDUsuario = U.IDUsuario
                 INNER JOIN dbo.Books B ON L.IDLibro = B.IDLibro
-                WHERE CONCAT(U.Nombre, ' ', U.Apellido) LIKE ?
+                WHERE CONCAT(U.NombreUsuario, ' ', U.ApellidoUsuario) LIKE ?
                 ORDER BY L.FechaPrestamo DESC
             """, (f"%{user_identifier}%",))
         return cur.fetchall()
@@ -401,7 +399,7 @@ def sp_get_category_stats(category_name: str, user_role=None):
                 C.NombreCategoria,
                 C.Descripcion,
                 COUNT(DISTINCT B.IDLibro) AS TotalLibros,
-                COUNT(DISTINCT L.IDPrestamo) AS TotalPrestamos,
+                COUNT(DISTINCT L.IDLoan) AS TotalPrestamos,
                 SUM(B.CantidadDisponible) AS LibrosDisponibles,
                 SUM(B.CantidadTotal - B.CantidadDisponible) AS LibrosPrestados
             FROM dbo.Categories C
@@ -424,7 +422,7 @@ def sp_compare_authors(author1: str, author2: str, user_role=None):
             SELECT 
                 A.NombreAutor,
                 COUNT(DISTINCT B.IDLibro) AS TotalLibros,
-                COUNT(L.IDPrestamo) AS TotalPrestamos
+                COUNT(L.IDLoan) AS TotalPrestamos
             FROM dbo.Authors A
             LEFT JOIN dbo.BookAuthors BA ON A.IDAutor = BA.IDAutores
             LEFT JOIN dbo.Books B ON BA.IDLibros = B.IDLibro

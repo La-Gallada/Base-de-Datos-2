@@ -25,10 +25,5 @@ if __name__ == "__main__":
     login = LoginApp(root, on_login_callback=on_login)
     login.mainloop()
 
-
-def main():
-    app = ChatApp()
-    app.mainloop()
-
 if __name__ == "__main__":
     main()

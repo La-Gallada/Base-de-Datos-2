@@ -42,9 +42,3 @@ def get_connection(user_role=None):
         )
 
     return pyodbc.connect(conn_str)
-
-def get_connection_by_user_type(user_type):
-    """
-    Alias para get_connection para mantener compatibilidad.
-    """
-    return get_connection(user_type)

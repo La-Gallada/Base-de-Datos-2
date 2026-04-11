@@ -4,7 +4,7 @@ Ejecuta intents y retorna resultados estructurados para la UI.
 """
 
 from datetime import date, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 import data.biblioteca_repo as biblioteca_repo
 
 
@@ -17,16 +17,18 @@ import data.biblioteca_repo as biblioteca_repo
 
 
 def run_intent_safely(intent_data: Dict[str, Any], user_role: str = None) -> Dict[str, Any]:
-    """
-    Ejecuta el intent y retorna un dict estructurado para la UI.
-    Nunca lanza excepciones al llamador.
-    """
     intent = intent_data.get("intent")
     params = intent_data.get("params", {})
 
     try:
         return _dispatch(intent, params, user_role)
     except Exception as e:
+        if '229' in str(e):
+            return {
+                "type": "text",
+                "message": "🔒 No tienes permisos para realizar esta consulta.",
+                "data": []
+            }
         return {
             "type": "text",
             "message": f"⚠️ Error al consultar la base de datos: {e}",
