@@ -194,7 +194,23 @@ def _handle_get_categories(params: Dict, user_role: str = None) -> Dict:
 # ─────────────────────────────────────────────
 
 def _handle_active_loans(params: Dict, user_role: str = None) -> Dict:
-    rows = biblioteca_repo.sp_get_active_loans(user_role=user_role)
+    if user_role not in ("Administrador", "Director"):
+        return {
+            "type": "text",
+            "message": "🔒 No tienes permisos para ver los préstamos activos.",
+            "data": []
+        }
+    try:
+        rows = biblioteca_repo.sp_get_active_loans(user_role=user_role)
+    except Exception as e:
+        if '229' in str(e):
+            return {
+                "type": "text",
+                "message": "🔒 No tienes permisos para realizar esta consulta.",
+                "data": []
+            }
+        raise
+
     if not rows:
         return {"type": "text", "message": "✅ No hay préstamos activos en este momento.", "data": []}
 
@@ -206,16 +222,31 @@ def _handle_active_loans(params: Dict, user_role: str = None) -> Dict:
     }
 
 
-def _handle_overdue_loans(params: Dict, user_role: str = None) -> Dict:
-    as_of = params.get("as_of_date")
-    rows = biblioteca_repo.sp_overdue_loans(as_of, user_role=user_role)
+def _handle_active_loans(params: Dict, user_role: str = None) -> Dict:
+    if user_role not in ("Administrador", "Director"):
+        return {
+            "type": "text",
+            "message": "🔒 Esta consulta es solo para administradores.",
+            "data": []
+        }
+    try:
+        rows = biblioteca_repo.sp_get_active_loans(user_role=user_role)
+    except Exception as e:
+        if '229' in str(e):
+            return {
+                "type": "text",
+                "message": "🔒 No tienes permisos para realizar esta consulta.",
+                "data": []
+            }
+        raise
+
     if not rows:
-        return {"type": "text", "message": "✅ No hay préstamos vencidos.", "data": []}
+        return {"type": "text", "message": "✅ No hay préstamos activos en este momento.", "data": []}
 
     loans = _rows_to_loans(rows)
     return {
         "type": "loans",
-        "message": f"⚠️ {len(loans)} préstamo(s) vencido(s):",
+        "message": f"📖 {len(loans)} préstamo(s) activo(s):",
         "data": loans
     }
 

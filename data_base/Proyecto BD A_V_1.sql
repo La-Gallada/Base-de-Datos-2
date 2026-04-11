@@ -187,7 +187,6 @@ GRANT EXECUTE ON dbo.SP_GetLoansByUser TO rol_director;
 GRANT EXECUTE ON dbo.SP_ReturnBook TO rol_director;
 GRANT EXECUTE ON dbo.SP_InsertBookAuthor TO rol_director;
 GRANT EXECUTE ON dbo.SP_DeleteBookAuthor TO rol_director;
-
 -- Grants directos a login_dirBiblioteca para asegurar ejecución en el entorno actual
 GRANT EXECUTE ON dbo.SP_GetUsers TO usr_dirBiblioteca;
 GRANT EXECUTE ON dbo.SP_GetAuthors TO usr_dirBiblioteca;
